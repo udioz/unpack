@@ -1,0 +1,33 @@
+#!/bin/bash
+
+while getopts 'rv' opt; do
+  case "$opt" in
+    r)
+      echo "Processing option 'r'"
+      ;;
+
+    v)
+      echo "Processing option 'v'"
+      ;;
+
+    ?)
+      echo -e "Invalid command option.\nUsage: $(basename $0) [-r] [-v] file [file...]"
+      exit 1
+      ;;
+  esac
+done
+shift "$(($OPTIND -1))"
+
+echo "The complete list of arguments is $@"
+echo "Total Number of Parameters: $#"
+
+supportedMethods=("gzip" "bzip2" "compress" "zip")
+decompressors=("gunzip" "bunzip2" "uncompress" "unzip")
+fileOutput=$(file $1)
+echo $fileOutput
+IFS="': " read -r -a helper <<< "$fileOutput"
+echo "${helper[1]}"
+
+if [[ " ${supportedMethods[*]} " == *" ${helper[1]} "* ]]; then
+    echo "arr contains ${helper[1]}"
+fi
