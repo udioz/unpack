@@ -3,11 +3,11 @@
 while getopts 'rv' opt; do
   case "$opt" in
     r)
-      echo "Processing option 'r'"
+      recursive=true
       ;;
 
     v)
-      echo "Processing option 'v'"
+      verbose=true
       ;;
 
     ?)
@@ -18,10 +18,12 @@ while getopts 'rv' opt; do
 done
 shift "$(($OPTIND -1))"
 
+uncompressedCount=0
+
 echo "The complete list of arguments is $@"
 echo "Total Number of Parameters: $#"
 
-declare -A supportedMethods=( [gzip]=gunzip [bzip2]=bunzip2 [compress]=uncompress [zip]=unzip)
+declare -A supportedMethods=( [gzip]="gunzip -f" [bzip2]="bunzip2 -f" [compress]="uncompress -f" [zip]="unzip -o")
 
 getFileFormat () {
   local fileOutput=$(file "$1" | tr '[:upper:]' '[:lower:]')
@@ -33,7 +35,42 @@ isFormatSupported () {
   [[ " ${!supportedMethods[*]} " == *" $1 "* ]] && echo true || echo false
 }
 
-fileFormat=$(getFileFormat $1)
-if $(isFormatSupported $fileFormat); then
-  ${supportedMethods[$fileFormat]} $1
-fi
+handleFile () {
+  local fileFormat=$(getFileFormat $1)
+  if $(isFormatSupported $fileFormat); then
+    ${supportedMethods[$fileFormat]} $1
+  else  
+    ((uncompressedCount++))  
+  fi
+  if $verbose; then
+    $(isFormatSupported $fileFormat) && "Unpacking $1" || echo "Ignoring $1"
+  fi
+
+}
+
+traverse () {
+  for file in "$1"/*
+  do
+  if [ -f "${file}" ] ; then
+      handleFile $file
+  else
+      echo "entering recursion with: ${file}"
+      traverse $file
+  fi
+  done
+}
+
+for i in "$@"
+do
+  if [ -d $i ]
+  then
+    traverse $i
+  elif [ -f $i ]
+  then
+    handleFile $i
+  else
+    echo "The given argument does not exist on the file system."
+  fi
+done
+
+echo $uncompressedCount
