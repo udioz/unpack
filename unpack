@@ -21,13 +21,19 @@ shift "$(($OPTIND -1))"
 echo "The complete list of arguments is $@"
 echo "Total Number of Parameters: $#"
 
-supportedMethods=("gzip" "bzip2" "compress" "zip")
-decompressors=("gunzip" "bunzip2" "uncompress" "unzip")
-fileOutput=$(file $1)
-echo $fileOutput
-IFS="': " read -r -a helper <<< "$fileOutput"
-echo "${helper[1]}"
+declare -A supportedMethods=( [gzip]=gunzip [bzip2]=bunzip2 [compress]=uncompress [zip]=unzip)
 
-if [[ " ${supportedMethods[*]} " == *" ${helper[1]} "* ]]; then
-    echo "arr contains ${helper[1]}"
+getFileFormat () {
+  local fileOutput=$(file "$1" | tr '[:upper:]' '[:lower:]')
+  IFS="': " read -r -a helper <<< "$fileOutput"
+  echo "${helper[1]}"
+}
+
+isFormatSupported () {
+  [[ " ${!supportedMethods[*]} " == *" $1 "* ]] && echo true || echo false
+}
+
+fileFormat=$(getFileFormat $1)
+if $(isFormatSupported $fileFormat); then
+  ${supportedMethods[$fileFormat]} $1
 fi
